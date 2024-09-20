@@ -14,13 +14,11 @@ async function getParameterGroups() {
     const command = new DescribeDBParameterGroupsCommand({ Marker: nextToken });
     const response = await rdsClient.send(command);
 
-    // Append the fetched parameter groups
     parameterGroups.push(...response.DBParameterGroups.map(group => ({
       name: group.DBParameterGroupName,
       type: 'db-parameter-group'
     })));
 
-    // Check if there is a next page
     nextToken = response.Marker;
   } while (nextToken);
 
@@ -36,13 +34,11 @@ async function getClusterParameterGroups() {
     const command = new DescribeDBClusterParameterGroupsCommand({ Marker: nextToken });
     const response = await rdsClient.send(command);
 
-    // Append the fetched cluster parameter groups
     clusterParameterGroups.push(...response.DBClusterParameterGroups.map(group => ({
       name: group.DBClusterParameterGroupName,
       type: 'db-cluster-parameter-group'
     })));
 
-    // Check if there is a next page
     nextToken = response.Marker;
   } while (nextToken);
 
@@ -61,10 +57,8 @@ async function getParameters(parameterGroupName) {
     });
     const response = await rdsClient.send(command);
 
-    // Append the fetched parameters
     parameters.push(...response.Parameters);
 
-    // Check if there is a next page
     nextToken = response.Marker;
   } while (nextToken);
 
@@ -86,10 +80,8 @@ async function getClusterParameters(parameterGroupName) {
     });
     const response = await rdsClient.send(command);
 
-    // Append the fetched parameters
     parameters.push(...response.Parameters);
 
-    // Check if there is a next page
     nextToken = response.Marker;
   } while (nextToken);
 
@@ -129,37 +121,56 @@ function compareParameters(group1Params, group2Params) {
   return { matching, nonMatching, exclusiveToGroup1, exclusiveToGroup2 };
 }
 
-// Function to write comparison report to a file
+// Function to write comparison report to an HTML file
 function writeReportToFile(report, group1, group2) {
-  const filename = `rds-parameter-comparison-${group1}-vs-${group2}.txt`;
-  const content = `
-    Comparison between RDS Parameter Groups: ${group1} and ${group2}
-    ===============================================================
+  const filename = `rds-parameter-comparison-${group1}-vs-${group2}.html`;
 
-    1. Matching Parameters:
-    ${report.matching.map(p => `${p.name}: ${p.value}`).join("\n")}
-
-    2. Non-Matching Parameters:
-    ${report.nonMatching.map(p => `${p.name}: Group1: ${p.group1Value}, Group2: ${p.group2Value}`).join("\n")}
-
-    3. Exclusive to ${group1}:
-    ${report.exclusiveToGroup1.map(p => `${p.name}: ${p.value}`).join("\n")}
-
-    4. Exclusive to ${group2}:
-    ${report.exclusiveToGroup2.map(p => `${p.name}: ${p.value}`).join("\n")}
+  const generateTable = (title, data, columns) => `
+    <h2>${title}</h2>
+    <table border="1" cellpadding="5" cellspacing="0">
+      <thead>
+        <tr>${columns.map(col => `<th>${col}</th>`).join('')}</tr>
+      </thead>
+      <tbody>
+        ${data.map(row => `<tr>${columns.map(col => `<td>${row[col] || ''}</td>`).join('')}</tr>`).join('')}
+      </tbody>
+    </table>
   `;
 
-  fs.writeFileSync(filename, content.trim());
-  console.log(`Report generated: ${filename}`);
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>RDS Parameter Group Comparison</title>
+      <style>
+        body { font-family: Arial, sans-serif; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+      </style>
+    </head>
+    <body>
+      <h1>Comparison between RDS Parameter Groups: ${group1} and ${group2}</h1>
+
+      ${generateTable('Matching Parameters', report.matching, ['name', 'value'])}
+      ${generateTable('Non-Matching Parameters', report.nonMatching, ['name', 'group1Value', 'group2Value'])}
+      ${generateTable(`Exclusive to ${group1}`, report.exclusiveToGroup1, ['name', 'value'])}
+      ${generateTable(`Exclusive to ${group2}`, report.exclusiveToGroup2, ['name', 'value'])}
+
+    </body>
+    </html>
+  `;
+
+  fs.writeFileSync(filename, htmlContent.trim());
+  console.log(`HTML report generated: ${filename}`);
 }
 
 // Main function
 async function main() {
-  // Step 1: Get available DB parameter groups and DB cluster parameter groups
   const standardParameterGroups = await getParameterGroups();
   const clusterParameterGroups = await getClusterParameterGroups();
-
-  // Combine them for user selection
   const allParameterGroups = [...standardParameterGroups, ...clusterParameterGroups];
 
   if (allParameterGroups.length < 2) {
@@ -201,7 +212,7 @@ async function main() {
   // Step 4: Compare the parameter groups
   const report = compareParameters(group1Params, group2Params);
 
-  // Step 5: Write the report to a file
+  // Step 5: Write the report to an HTML file
   writeReportToFile(report, group1Name, group2Name);
 }
 
