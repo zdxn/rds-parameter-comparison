@@ -155,7 +155,7 @@ function writeReportToFile(report, group1, group2) {
       <h1>Comparison between RDS Parameter Groups: ${group1} and ${group2}</h1>
 
       ${generateTable('Matching Parameters', report.matching, ['name', 'value'])}
-      ${generateTable('Non-Matching Parameters', report.nonMatching, ['name', 'group1Value', 'group2Value'])}
+      ${generateTable('Non-Matching Parameters', report.nonMatching, ['name', group1, group2])}
       ${generateTable(`Exclusive to ${group1}`, report.exclusiveToGroup1, ['name', 'value'])}
       ${generateTable(`Exclusive to ${group2}`, report.exclusiveToGroup2, ['name', 'value'])}
 
