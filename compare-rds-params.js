@@ -92,7 +92,7 @@ async function getClusterParameters(parameterGroupName) {
 }
 
 // Function to compare two parameter groups
-function compareParameters(group1Params, group2Params) {
+function compareParameters(group1Params, group2Params, group1Name, group2Name) {
   const matching = [];
   const nonMatching = [];
   const exclusiveToGroup1 = [];
@@ -104,7 +104,7 @@ function compareParameters(group1Params, group2Params) {
       if (group2Params[name] === value) {
         matching.push({ name, value });
       } else {
-        nonMatching.push({ name, group1Value: value, group2Value: group2Params[name] });
+        nonMatching.push({ name, [group1Name]: value, [group2Name]: group2Params[name] });
       }
     } else {
       exclusiveToGroup1.push({ name, value });
@@ -121,7 +121,7 @@ function compareParameters(group1Params, group2Params) {
   return { matching, nonMatching, exclusiveToGroup1, exclusiveToGroup2 };
 }
 
-// Function to write comparison report to an HTML file
+// Function to write comparison report to an HTML file with dynamic group headers
 function writeReportToFile(report, group1, group2) {
   const filename = `rds-parameter-comparison-${group1}-vs-${group2}.html`;
 
@@ -155,7 +155,7 @@ function writeReportToFile(report, group1, group2) {
       <h1>Comparison between RDS Parameter Groups: ${group1} and ${group2}</h1>
 
       ${generateTable('Matching Parameters', report.matching, ['name', 'value'])}
-      ${generateTable('Non-Matching Parameters', report.nonMatching, ['name', 'group1Value', 'group2Value'])}
+      ${generateTable('Non-Matching Parameters', report.nonMatching, ['name', group1, group2])}
       ${generateTable(`Exclusive to ${group1}`, report.exclusiveToGroup1, ['name', 'value'])}
       ${generateTable(`Exclusive to ${group2}`, report.exclusiveToGroup2, ['name', 'value'])}
 
@@ -210,7 +210,7 @@ async function main() {
     : await getClusterParameters(group2Name);
 
   // Step 4: Compare the parameter groups
-  const report = compareParameters(group1Params, group2Params);
+  const report = compareParameters(group1Params, group2Params, group1Name, group2Name);
 
   // Step 5: Write the report to an HTML file
   writeReportToFile(report, group1Name, group2Name);
